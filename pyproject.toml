@@ -15,3 +15,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "jax", "dm-haiku", "rlax", "distrax"]
+
+[tool.setuptools.packages.find]
+include = ["disco_torch*"]

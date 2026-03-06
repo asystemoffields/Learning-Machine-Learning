@@ -11,24 +11,32 @@ from disco_torch.types import EmaState
 def batch_lookup(table: Tensor, index: Tensor) -> Tensor:
     """Select entries from table using index, batched over leading dims.
 
-    table: [..., A, D]  or [..., A]
-    index: [...]
-    returns: [..., D] or [...]
+    Matches haiku BatchApply(_lookup, num_dims=2):
+      table: [B1, B2, A, ...]  (any number of trailing dims after A)
+      index: [B1, B2]
+      returns: [B1, B2, ...]
+
+    The action dim is at position index.dim() in table.
     """
     idx = index.long()
-    if table.dim() == idx.dim() + 1:
-        # table is [..., A, D], gather along the A dim
-        a_dim = idx.dim()
-        idx_expanded = idx.unsqueeze(-1).expand(*idx.shape, table.shape[-1])
-        return table.gather(a_dim, idx_expanded)
-    elif table.dim() == idx.dim():
-        # table is [..., A], gather along last dim (no trailing D)
-        # We need idx to be same shape — just gather directly
-        return table.gather(-1, idx.unsqueeze(-1)).squeeze(-1)
-    else:
+    n_batch = idx.dim()
+    n_trailing = table.dim() - n_batch - 1  # dims after the action dim
+
+    if n_trailing < 0:
         raise ValueError(
-            f"batch_lookup: table.dim()={table.dim()}, index.dim()={idx.dim()}"
+            f"batch_lookup: table.dim()={table.dim()} must be > index.dim()={idx.dim()}"
         )
+
+    # Expand index to match table: [..., 1, D1, D2, ...]
+    idx_exp = idx
+    for _ in range(n_trailing + 1):
+        idx_exp = idx_exp.unsqueeze(-1)
+    # Broadcast trailing dims
+    trailing_shape = table.shape[n_batch + 1:]
+    idx_exp = idx_exp.expand(*idx.shape, 1, *trailing_shape)
+
+    result = table.gather(n_batch, idx_exp).squeeze(n_batch)
+    return result
 
 
 def signed_logp1(x: Tensor) -> Tensor:

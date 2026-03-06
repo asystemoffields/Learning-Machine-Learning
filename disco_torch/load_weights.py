@@ -55,6 +55,11 @@ def _load_linear(module: torch.nn.Linear, w: np.ndarray, b: np.ndarray | None):
         module.bias.data.zero_()
 
 
+def _load_haiku_lstm(cell, w: np.ndarray, b: np.ndarray):
+    """Load Haiku LSTM combined linear into our HaikuLSTMCell."""
+    _load_linear(cell.linear, w, b)
+
+
 def _load_lstm_combined(cell: torch.nn.LSTMCell, w: np.ndarray, b: np.ndarray):
     """Haiku LSTM combined linear: w=[input+hidden, 4*hidden], b=[4*hidden]."""
     w_t = _t(w)
@@ -106,7 +111,7 @@ def load_disco103_weights(rule, npz_path: str | Path) -> None:
     _load_conv1d_net(net.policy_net, p, "lstm/sequential")
 
     # Trajectory LSTM (combined linear: [283, 1024] = [27+256, 4*256])
-    _load_lstm_combined(
+    _load_haiku_lstm(
         net.trajectory_rnn.cell,
         p["lstm/lstm/linear/w"], p["lstm/lstm/linear/b"],
     )
@@ -134,7 +139,7 @@ def load_disco103_weights(rule, npz_path: str | Path) -> None:
     _load_linear(input_mlp_linear, p[f"{mr}/mlp_2/~/linear_0/w"], p[f"{mr}/mlp_2/~/linear_0/b"])
 
     # Meta-RNN LSTM cell
-    _load_lstm_combined(
+    _load_haiku_lstm(
         net.meta_rnn_cell,
         p[f"{mr}/lstm/linear/w"], p[f"{mr}/lstm/linear/b"],
     )

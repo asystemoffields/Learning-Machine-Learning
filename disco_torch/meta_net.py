@@ -26,9 +26,10 @@ class BatchMLP(nn.Module):
         super().__init__()
         layers = []
         d_in = in_features
-        for d_out in hiddens:
+        for i, d_out in enumerate(hiddens):
             layers.append(nn.Linear(d_in, d_out))
-            layers.append(nn.ReLU())
+            if i < len(hiddens) - 1:
+                layers.append(nn.ReLU())
             d_in = d_out
         self.net = nn.Sequential(*layers)
         self.out_features = hiddens[-1] if hiddens else in_features
@@ -78,12 +79,37 @@ class Conv1dNet(nn.Module):
         return x
 
 
+class HaikuLSTMCell(nn.Module):
+    """LSTM cell matching Haiku's gate order [i, g, f, o] and forget bias +1.
+
+    Haiku: gates = Linear([x, h]) -> split into [i, g, f, o]
+           f = sigmoid(f + 1), i = sigmoid(i), g = tanh(g), o = sigmoid(o)
+    """
+
+    def __init__(self, input_size: int, hidden_size: int):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.linear = nn.Linear(input_size + hidden_size, 4 * hidden_size)
+
+    def forward(self, x: Tensor, state: tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor]:
+        h, c = state
+        gates = self.linear(torch.cat([x, h], dim=-1))
+        i, g, f, o = gates.chunk(4, dim=-1)
+        f = torch.sigmoid(f + 1.0)  # Haiku forget bias
+        i = torch.sigmoid(i)
+        g = torch.tanh(g)
+        o = torch.sigmoid(o)
+        new_c = f * c + i * g
+        new_h = o * torch.tanh(new_c)
+        return new_h, new_c
+
+
 class ResetLSTM(nn.Module):
     """LSTM that resets hidden state at episode boundaries."""
 
     def __init__(self, input_size: int, hidden_size: int):
         super().__init__()
-        self.cell = nn.LSTMCell(input_size, hidden_size)
+        self.cell = HaikuLSTMCell(input_size, hidden_size)
         self.hidden_size = hidden_size
 
     def forward(self, x: Tensor, should_reset: Tensor, reverse: bool = False) -> Tensor:
@@ -158,8 +184,8 @@ class DiscoMetaNet(nn.Module):
         self.meta_rnn_y_net = BatchMLP(prediction_size, [16, 1])
         self.meta_rnn_z_net = BatchMLP(prediction_size, [16, 1])
         self.meta_rnn_policy_net = Conv1dNet(9, [16, 2])
-        self.meta_rnn_input_mlp = nn.Sequential(nn.Linear(29, 16), nn.ReLU())
-        self.meta_rnn_cell = nn.LSTMCell(16, 128)
+        self.meta_rnn_input_mlp = nn.Sequential(nn.Linear(29, 16))
+        self.meta_rnn_cell = HaikuLSTMCell(16, 128)
 
     def initial_meta_rnn_state(self, device=None) -> tuple[Tensor, Tensor]:
         h = torch.zeros(128, device=device)
