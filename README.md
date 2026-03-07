@@ -4,7 +4,9 @@ An adventure space where I go way out of depth and totally over my head with ML.
 
 ## disco-torch
 
-A PyTorch port of DeepMind's **Disco103** — the meta-learned reinforcement learning update rule from [*Discovering Reinforcement Learning Algorithms*](https://www.nature.com/articles/s41586-025-08828-z) (Nature, 2025).
+A PyTorch port of DeepMind's **Disco103** — the meta-learned reinforcement learning update rule from [*Discovering State-of-the-art Reinforcement Learning Algorithms*](https://doi.org/10.1038/s41586-025-09761-x) (Nature, 2025).
+
+See the standalone port repo: [disco-torch](https://github.com/asystemoffields/disco-torch).
 
 ### What is DiscoRL?
 
@@ -80,3 +82,19 @@ pip install -e .
 ```
 
 Download `disco_103.npz` from the [disco_rl repo](https://github.com/google-deepmind/disco_rl) and place in `weights/`.
+
+## Acknowledgments
+
+The disco-torch port is based on [google-deepmind/disco_rl](https://github.com/google-deepmind/disco_rl). All credit for the algorithm, architecture, and pretrained weights goes to the original authors.
+
+```bibtex
+@article{oh2025disco,
+  title={Discovering State-of-the-art Reinforcement Learning Algorithms},
+  author={Oh, Junhyuk and Farquhar, Greg and Kemaev, Iurii and Calian, Dan A. and Hessel, Matteo and Zintgraf, Luisa and Singh, Satinder and van Hasselt, Hado and Silver, David},
+  journal={Nature},
+  volume={648},
+  pages={312--319},
+  year={2025},
+  doi={10.1038/s41586-025-09761-x}
+}
+```
